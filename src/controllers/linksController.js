@@ -2,97 +2,89 @@
 import { pool } from "../db.js";
 import { generateCode } from "../utils/generateCode.js";
 
-// Strict URL validation function
-const isValidURL = (url) => {
-  const pattern = /^(https?:\/\/)([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}(:\d+)?(\/.*)?$/;
-  return pattern.test(url);
-};
-
-// Get all links
-export const getAllLinks = async () => {
+// Strict URL validation
+function isValidUrl(url) {
   try {
-    const res = await pool.query("SELECT * FROM links ORDER BY id DESC");
-    return res.rows;
-  } catch (err) {
-    console.error("Error fetching links", err);
-    throw err;
-  }
-};
+    const parsed = new URL(url);
 
-// Create a new short link (supports optional custom code)
-export const createLink = async (url, customCode) => {
-  // Validate URL first
-  if (!isValidURL(url)) {
-    throw new Error(
-      "Invalid URL. Enter a valid URL starting with http:// or https:// and a proper domain name."
-    );
+    if (!["http:", "https:"].includes(parsed.protocol)) return false;
+    if (!parsed.hostname.includes(".")) return false;
+    if (/^\d+$/.test(parsed.hostname)) return false;
+
+    return true;
+  } catch {
+    return false;
   }
-  
+}
+
+// Get all saved links
+export async function getAllLinks() {
+  const result = await pool.query("SELECT * FROM links ORDER BY id DESC");
+  return result.rows;
+}
+
+// Create new short URL
+export async function createShortLink(originalUrl) {
+  if (!isValidUrl(originalUrl)) {
+    throw new Error("Invalid URL format! Enter a valid http/https link.");
+  }
+
   // Check if URL already exists
-  const existingUrl = await pool.query("SELECT * FROM links WHERE url=$1", [url]);
-  if (existingUrl.rows.length > 0) {
-    throw new Error(`This URL already exists! Short code: ${existingUrl.rows[0].code}`);
+  const existingUrl = await pool.query(
+    "SELECT * FROM links WHERE url = $1",
+    [originalUrl]
+  );
+
+  if (existingUrl.rowCount > 0) {
+    throw new Error("URL already exists!");
   }
 
-  const code = customCode || generateCode();
+  // Generate unique code
+  let code = generateCode();
 
-  // Check custom code uniqueness
-  if (customCode) {
-    const check = await pool.query("SELECT * FROM links WHERE code=$1", [customCode]);
-    if (check.rows.length > 0) throw new Error("Custom code already exists");
+  const codeExists = await pool.query("SELECT code FROM links WHERE code = $1", [
+    code,
+  ]);
+
+  if (codeExists.rowCount > 0) {
+    // regenerate if duplicate
+    code = generateCode();
   }
 
-  try {
-    const res = await pool.query(
-      "INSERT INTO links (code, url) VALUES ($1, $2) RETURNING *",
-      [code, url]
-    );
-    return res.rows[0];
-  } catch (err) {
-    console.error("Error creating link", err);
-    throw err;
+  // Insert new link
+  const insert = await pool.query(
+    `INSERT INTO links (code, url, clicks)
+     VALUES ($1, $2, 0)
+     RETURNING *`,
+    [code, originalUrl]
+  );
+
+  return insert.rows[0];
+}
+
+// Delete link by code
+export async function deleteLinkByCode(code) {
+  const result = await pool.query("DELETE FROM links WHERE code = $1", [code]);
+
+  if (result.rowCount === 0) {
+    throw new Error("Link not found!");
   }
-};
 
-// Redirect short link
-export const redirectLink = async (code) => {
-  try {
-    const res = await pool.query("SELECT * FROM links WHERE code=$1", [code]);
-    if (!res.rows.length) return null;
+  return true;
+}
 
-    const link = res.rows[0];
+// Find link for redirect
+export async function findLinkByCode(code) {
+  const result = await pool.query("SELECT * FROM links WHERE code = $1", [code]);
+  return result.rows[0];
+}
 
-    // Increment click count and update last clicked
-    await pool.query(
-      "UPDATE links SET clicks = clicks + 1, last_clicked = NOW() WHERE id=$1",
-      [link.id]
-    );
-
-    return link.url;
-  } catch (err) {
-    console.error("Error redirecting link", err);
-    throw err;
-  }
-};
-
-// Delete a link by ID
-export const deleteLink = async (id) => {
-  try {
-    await pool.query("DELETE FROM links WHERE id=$1", [id]);
-  } catch (err) {
-    console.error("Error deleting link", err);
-    throw err;
-  }
-};
-
-// Get stats for a single link by code
-export const getLinkStats = async (code) => {
-  try {
-    const res = await pool.query("SELECT * FROM links WHERE code=$1", [code]);
-    if (!res.rows.length) return null;
-    return res.rows[0];
-  } catch (err) {
-    console.error("Error fetching link stats", err);
-    throw err;
-  }
-};
+// Increment click count
+export async function incrementClick(code) {
+  await pool.query(
+    `UPDATE links 
+     SET clicks = clicks + 1, last_clicked = NOW()
+     WHERE code = $1`,
+    [code]
+  );
+}

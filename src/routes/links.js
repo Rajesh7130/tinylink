@@ -1,97 +1,83 @@
-// src/routes/links.js
 import express from "express";
-import { 
-  getAllLinks, 
-  createLink, 
-  redirectLink, 
-  deleteLink, 
-  getLinkStats 
+import {
+  getAllLinks,
+  createShortLink,
+  deleteLinkByCode,
+  findLinkByCode,
+  incrementClick
 } from "../controllers/linksController.js";
 
 const router = express.Router();
 
-// ---------------------------
-// DASHBOARD - list all links
-// ---------------------------
+// Dashboard
 router.get("/", async (req, res) => {
-  try {
-    const links = await getAllLinks();
-    res.render("dashboard", { links, message: null, error: null });
-  } catch (err) {
-    res.status(500).send("Error fetching links");
-  }
-});
-
-// ---------------------------
-// CREATE SHORT LINK
-// ---------------------------
-router.post("/shorten", async (req, res) => {
-  const { url, code } = req.body; // code = optional custom code
-  try {
-    const link = await createLink(url, code);
-    const links = await getAllLinks();
-    res.render("dashboard", { links, message: `Link created: ${link.code}`, error: null });
-  } catch (err) {
-    const links = await getAllLinks();
-    res.render("dashboard", { links, message: null, error: err.message });
-  }
-});
-
-// ---------------------------
-// DELETE LINK
-// ---------------------------
-router.post("/delete/:id", async (req, res) => {
-  const { id } = req.params;
-  try {
-    await deleteLink(id);
-    const links = await getAllLinks();
-    res.render("dashboard", { links, message: `Link deleted successfully`, error: null });
-  } catch (err) {
-    const links = await getAllLinks();
-    res.render("dashboard", { links, message: null, error: "Error deleting link" });
-  }
-});
-
-// ---------------------------
-// STATS FOR A SINGLE CODE
-// ---------------------------
-router.get("/code/:code", async (req, res) => {
-  const { code } = req.params;
-  try {
-    const link = await getLinkStats(code);
-    if (!link) return res.status(404).send("Link not found");
-    res.render("stats", { link });
-  } catch (err) {
-    res.status(500).send("Error fetching stats");
-  }
-});
-
-// ---------------------------
-// HEALTH CHECK
-// ---------------------------
-router.get("/healthz", (req, res) => {
-  res.status(200).json({
-    ok: true,
-    version: "1.0",
-    uptime: process.uptime().toFixed(2) + "s",
-    timestamp: new Date().toISOString()
+  const links = await getAllLinks();
+  res.render("dashboard", {
+    message: null,
+    alert: null,
+    links
   });
 });
 
-// ---------------------------
-// REDIRECT SHORT LINK
-// Must be last to avoid conflicts with other routes
-// ---------------------------
-router.get("/:code", async (req, res) => {
-  const { code } = req.params;
+// Create Short URL
+router.post("/shorten", async (req, res) => {
+  const { originalUrl } = req.body;
+
   try {
-    const url = await redirectLink(code);
-    if (!url) return res.status(404).send("Link not found");
-    res.redirect(url);
+    await createShortLink(originalUrl);
+    const links = await getAllLinks();
+
+    res.render("dashboard", {
+      message: "Short URL created successfully!",
+      alert: "success",
+      links
+    });
   } catch (err) {
-    res.status(500).send("Error redirecting link");
+    const links = await getAllLinks();
+    res.render("dashboard", {
+      message: err.message,
+      alert: "error",
+      links
+    });
   }
 });
 
-export default router;
+// DELETE
+router.post("/delete/:code", async (req, res) => {
+  const { code } = req.params;
 
+  try {
+    await deleteLinkByCode(code);
+    const links = await getAllLinks();
+
+    res.render("dashboard", {
+      message: "Link deleted successfully!",
+      alert: "success",
+      links
+    });
+  } catch (err) {
+    const links = await getAllLinks();
+
+    res.render("dashboard", {
+      message: err.message,
+      alert: "error",
+      links
+    });
+  }
+});
+
+// ⭐ SHORT URL REDIRECT (This was missing)
+router.get("/:code", async (req, res) => {
+  const { code } = req.params;
+
+  const link = await findLinkByCode(code);
+
+  if (!link) {
+    return res.send("Invalid short URL!");
+  }
+
+  await incrementClick(code);
+  res.redirect(link.url);
+});
+
+export default router;
