@@ -5,15 +5,48 @@
   <title>Link Stats</title>
   <link rel="stylesheet" href="/style.css">
 </head>
+
 <body>
-  <header><h1>Link Stats</h1></header>
+
+  <header>
+    <h1>Link Statistics</h1>
+  </header>
+
   <div class="container">
-    <p><strong>Code:</strong> <%= link.code %></p>
-    <p><strong>URL:</strong> <a href="<%= link.url %>" target="_blank"><%= link.url %></a></p>
-    <p><strong>Clicks:</strong> <%= link.clicks %></p>
-    <p><strong>Last Clicked:</strong> <%= link.last_clicked ? link.last_clicked.toLocaleString() : 'Never' %></p>
-    <a href="/" class="copy-btn">Back to Dashboard</a>
+    
+    <h2 class="section-title">Overview</h2>
+
+    <div class="stats-box">
+      <p><strong>Short Code:</strong> <span class="highlight"><%= link.code %></span></p>
+
+      <p><strong>Original URL:</strong> 
+        <a href="<%= link.url %>" target="_blank" class="url-link">
+          <%= link.url %>
+        </a>
+      </p>
+
+      <p><strong>Total Clicks:</strong> 
+        <span class="highlight"><%= link.clicks %></span>
+      </p>
+
+      <p><strong>Last Clicked:</strong>
+        <%= link.last_clicked ? new Date(link.last_clicked).toLocaleString() : 'Never' %>
+      </p>
+
+      <p><strong>Created At:</strong>
+        <%= link.created_at ? new Date(link.created_at).toLocaleString() : 'Unknown' %>
+      </p>
+    </div>
+
+    <a href="/" class="copy-btn" style="margin-top: 20px; display:inline-block;">
+      ⬅ Back to Dashboard
+    </a>
+
   </div>
-  <footer>&copy; <%= new Date().getFullYear() %> TinyLink</footer>
+
+  <footer>
+    &copy; <%= new Date().getFullYear() %> TinyLink
+  </footer>
+
 </body>
 </html>

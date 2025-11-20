@@ -1,35 +1,31 @@
-import 'dotenv/config';
-import { Pool } from 'pg';
+// db.js
+import "dotenv/config";
+import { Pool } from "pg";
 
+// Create Postgres connection pool
 export const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: {
     require: true,
-    rejectUnauthorized: false, // needed for some Neon/Postgres setups
+    rejectUnauthorized: false, // Required for Neon/Railway/Vercel/Render
   },
 });
 
-// Optional: Setup table if it doesn't exist
+// Initialize table if not exists
 export async function setupLinksTable() {
-  const client = await pool.connect();
   try {
-    await client.query(`
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS links (
         id SERIAL PRIMARY KEY,
-        code VARCHAR(10) UNIQUE NOT NULL,
+        code VARCHAR(20) UNIQUE NOT NULL,
         url TEXT NOT NULL,
         clicks INT DEFAULT 0,
         last_clicked TIMESTAMP,
         created_at TIMESTAMP DEFAULT NOW()
       );
     `);
-    console.log("Links table is ready");
+    console.log("🟢 Links table ready");
   } catch (err) {
-    console.error("Failed to setup links table:", err);
-  } finally {
-    client.release();
+    console.error("🔴 Error setting up links table:", err);
   }
 }
-
-// Call this once to initialize table
-// setupLinksTable();
