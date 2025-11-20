@@ -2,19 +2,50 @@ body {
   font-family: Arial, sans-serif;
   margin: 20px;
 }
+
+header, footer {
+  text-align: center;
+  margin: 10px 0;
+}
+
 form input {
   padding: 5px;
   margin: 5px;
 }
+
 form button {
   padding: 5px 10px;
 }
+
 table {
   margin-top: 20px;
   width: 100%;
   border-collapse: collapse;
 }
+
 table, th, td {
   border: 1px solid #333;
   padding: 5px;
+}
+
+.truncate {
+  max-width: 250px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.copy-btn, .delete-btn {
+  padding: 3px 8px;
+  margin: 2px;
+  cursor: pointer;
+}
+
+.alert.success { background: #d4edda; color: #155724; padding: 5px; margin: 5px 0; }
+.alert.error { background: #f8d7da; color: #721c24; padding: 5px; margin: 5px 0; }
+
+@media(max-width:600px){
+  table, thead, tbody, th, td, tr { display: block; }
+  th, td { border: none; padding: 5px; }
+  td { margin-bottom: 10px; }
 }

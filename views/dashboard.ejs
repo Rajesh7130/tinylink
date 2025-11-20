@@ -6,35 +6,67 @@
   <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-  <h1>TinyLink Dashboard</h1>
-  <form action="/shorten" method="POST">
-    <input type="text" name="url" placeholder="Enter long URL" required>
-    <input type="text" name="name" placeholder="Name (optional)">
-    <button type="submit">Shorten URL</button>
-  </form>
+  <header><h1>TinyLink Dashboard</h1></header>
+  <div class="container">
 
-  <h2>All Links</h2>
-  <table>
-    <thead>
-      <tr>
-        <th>ID</th>
-        <th>Code</th>
-        <th>Name</th>
-        <th>URL</th>
-        <th>Clicks</th>
-      </tr>
-    </thead>
-    <tbody>
-      <% links.forEach(link => { %>
-        <tr>
-          <td><%= link.id %></td>
-          <td><a href="/<%= link.code %>"><%= link.code %></a></td>
-          <td><%= link.name || "-" %></td>
-          <td><%= link.url %></td>
-          <td><%= link.clicks %></td>
-        </tr>
-      <% }) %>
-    </tbody>
-  </table>
+    <% if (message) { %>
+      <div class="alert <%= alert %>"><%= message %></div>
+    <% } %>
+
+    <form action="/shorten" method="POST" id="linkForm">
+      <input type="text" name="url" placeholder="Enter long URL" required>
+      <input type="text" name="name" placeholder="Custom Code (optional)">
+      <button type="submit" id="submitBtn">Shorten URL</button>
+    </form>
+
+    <% if (links.length === 0) { %>
+      <p>No links yet</p>
+    <% } else { %>
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Code</th>
+            <th>Name</th>
+            <th>URL</th>
+            <th>Clicks</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% links.forEach(link => { %>
+            <tr>
+              <td><%= link.id %></td>
+              <td><a href="/<%= link.code %>" target="_blank"><%= link.code %></a></td>
+              <td><%= link.name || "-" %></td>
+              <td title="<%= link.url %>" class="truncate"><%= link.url %></td>
+              <td><%= link.clicks %></td>
+              <td>
+                <button class="copy-btn" onclick="copyURL('<%= link.code %>')">Copy</button>
+                <form action="/delete/<%= link.id %>" method="POST" style="display:inline;">
+                  <button class="delete-btn">Delete</button>
+                </form>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    <% } %>
+  </div>
+
+  <footer>&copy; <%= new Date().getFullYear() %> TinyLink</footer>
+
+  <script>
+    function copyURL(code) {
+      const url = `${window.location.origin}/${code}`;
+      navigator.clipboard.writeText(url).then(() => alert("Copied: " + url));
+    }
+    const form = document.getElementById("linkForm");
+    const submitBtn = document.getElementById("submitBtn");
+    form.addEventListener("submit", () => {
+      submitBtn.disabled = true;
+      submitBtn.innerText = "Loading...";
+    });
+  </script>
 </body>
 </html>
