@@ -1,4 +1,3 @@
-// db.js
 import "dotenv/config";
 import { Pool } from "pg";
 
@@ -7,11 +6,11 @@ export const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: {
     require: true,
-    rejectUnauthorized: false, // Required for Neon/Railway/Vercel/Render
+    rejectUnauthorized: false,
   },
 });
 
-// Initialize table if not exists
+// Create table on server start
 export async function setupLinksTable() {
   try {
     await pool.query(`

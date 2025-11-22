@@ -9,24 +9,18 @@ import {
 
 const router = express.Router();
 
-// Dashboard
+// Dashboard: List/Add/Delete
 router.get("/", async (req, res) => {
   const links = await getAllLinks();
-  res.render("dashboard", {
-    message: null,
-    alert: null,
-    links
-  });
+  res.render("dashboard", { message: null, alert: null, links });
 });
 
 // Create Short URL
 router.post("/shorten", async (req, res) => {
-  const { originalUrl } = req.body;
-
+  const { originalUrl, customName } = req.body;
   try {
-    await createShortLink(originalUrl);
+    await createShortLink(originalUrl, customName);
     const links = await getAllLinks();
-
     res.render("dashboard", {
       message: "Short URL created successfully!",
       alert: "success",
@@ -42,14 +36,12 @@ router.post("/shorten", async (req, res) => {
   }
 });
 
-// DELETE
+// Delete Short URL
 router.post("/delete/:code", async (req, res) => {
   const { code } = req.params;
-
   try {
     await deleteLinkByCode(code);
     const links = await getAllLinks();
-
     res.render("dashboard", {
       message: "Link deleted successfully!",
       alert: "success",
@@ -57,7 +49,6 @@ router.post("/delete/:code", async (req, res) => {
     });
   } catch (err) {
     const links = await getAllLinks();
-
     res.render("dashboard", {
       message: err.message,
       alert: "error",
@@ -66,18 +57,12 @@ router.post("/delete/:code", async (req, res) => {
   }
 });
 
-// ⭐ SHORT URL REDIRECT (This was missing)
-router.get("/:code", async (req, res) => {
+// Stats for a Single Code
+router.get("/code/:code", async (req, res) => {
   const { code } = req.params;
-
   const link = await findLinkByCode(code);
-
-  if (!link) {
-    return res.send("Invalid short URL!");
-  }
-
-  await incrementClick(code);
-  res.redirect(link.url);
+  if (!link) return res.status(404).send("Short URL Not Found!");
+  res.render("stats", { link }); // stats.ejs
 });
 
 export default router;

@@ -1,10 +1,9 @@
-// server.js
 import express from "express";
 import dotenv from "dotenv";
 import linksRouter from "./src/routes/links.js";
-import { findLinkByCode, incrementClick } from "./src/controllers/linksController.js";
 import path from "path";
 import { fileURLToPath } from "url";
+import { setupLinksTable } from "./src/utils/db.js";
 
 dotenv.config();
 
@@ -24,40 +23,10 @@ app.use(express.static(path.join(__dirname, "public")));
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
 
+// DB Table setup
+setupLinksTable();
 
-// --------------------------------------------------
-// 🚀 SHORT URL REDIRECT (IMPORTANT: Keep ABOVE router)
-// --------------------------------------------------
-app.get("/:code", async (req, res) => {
-  const { code } = req.params;
-
-  try {
-    const link = await findLinkByCode(code);
-
-    if (!link) {
-      return res.status(404).send("Short URL not found!");
-    }
-
-    // Increase click count
-    await incrementClick(code);
-
-    // Redirect to actual URL
-    return res.redirect(link.url);
-
-  } catch (err) {
-    console.error("Redirect error:", err);
-    return res.status(500).send("Server Error");
-  }
-});
-
-
-// --------------------------------------------------
-// Dashboard & all other routes
-// --------------------------------------------------
-app.use("/", linksRouter);
-
-
-// Health check
+// Correct route order!
 app.get("/healthz", (req, res) => {
   res.status(200).json({
     ok: true,
@@ -66,9 +35,32 @@ app.get("/healthz", (req, res) => {
   });
 });
 
-// --------------------------------------------------
-// Start server
-// --------------------------------------------------
+// All core routes (dashboard/statistics/add/delete)
+app.use("/", linksRouter);
+
+// Catch-all redirect (must be last!)
+app.get("/:code", async (req, res) => {
+  const { code } = req.params;
+  // Prevent healthz conflict
+  if (code === "healthz") {
+    return res.status(200).json({
+      ok: true,
+      version: "1.0.0",
+      status: "TinyLink Server Running 🚀"
+    });
+  }
+  try {
+    const { findLinkByCode, incrementClick } = await import("./src/controllers/linksController.js");
+    const link = await findLinkByCode(code);
+    if (!link) return res.status(404).send("Invalid short URL!");
+    await incrementClick(code);
+    return res.redirect(link.url);
+  } catch (err) {
+    console.error("Redirect error:", err);
+    return res.status(500).send("Server Error");
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`✅ Server started at http://localhost:${PORT}`);
 });
